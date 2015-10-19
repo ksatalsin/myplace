@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group android:checkableBehavior="none">
+        <item android:id="@+id/nav_main" android:icon="@android:drawable/ic_menu_compass"
+            android:title="Main" />
+        <item android:id="@+id/nav_fav" android:icon="@android:drawable/ic_menu_myplaces"
+            android:title="Favorite" />
+
+    </group>
+
+    <item android:title="Communicate">
+        <menu>
+            <item android:id="@+id/nav_github" android:icon="@drawable/ic_menu_github_2"
+                android:title="Open GitHub" />
+            <item android:id="@+id/nav_email" android:icon="@android:drawable/ic_menu_send"
+                android:title="Email me" />
+        </menu>
+    </item>
+
+</menu>
