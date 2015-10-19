@@ -1,25 +1,33 @@
 package net.ksa.myplace.model;
 
-import android.net.Uri;
-
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
-
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Locale;
 
 public class PlaceWrapper implements Serializable {
 
     String id;
-
-    ArrayList<Integer> placeTypes;
-
     String address;
-
-    Locale locale;
-
     String nameame;
+    double lat;
+    double lng;
+    String phoneNumber;
+    float getRating;
+    int getPriceLevel;
+
+    public double getLat() {
+        return lat;
+    }
+
+    public void setLat(double lat) {
+        this.lat = lat;
+    }
+
+    public double getLng() {
+        return lng;
+    }
+
+    public void setLng(double lng) {
+        this.lng = lng;
+    }
 
     public String getId() {
         return id;
@@ -27,14 +35,6 @@ public class PlaceWrapper implements Serializable {
 
     public void setId(String id) {
         this.id = id;
-    }
-
-    public ArrayList<Integer> getPlaceTypes() {
-        return placeTypes;
-    }
-
-    public void setPlaceTypes(ArrayList<Integer> placeTypes) {
-        this.placeTypes = placeTypes;
     }
 
     public String getAddress() {
@@ -45,14 +45,6 @@ public class PlaceWrapper implements Serializable {
         this.address = address;
     }
 
-    public Locale getLocale() {
-        return locale;
-    }
-
-    public void setLocale(Locale locale) {
-        this.locale = locale;
-    }
-
     public String getNameame() {
         return nameame;
     }
@@ -61,29 +53,6 @@ public class PlaceWrapper implements Serializable {
         this.nameame = nameame;
     }
 
-    public LatLng getLatLng() {
-        return latLng;
-    }
-
-    public void setLatLng(LatLng latLng) {
-        this.latLng = latLng;
-    }
-
-    public LatLngBounds getViewport() {
-        return viewport;
-    }
-
-    public void setViewport(LatLngBounds viewport) {
-        this.viewport = viewport;
-    }
-
-    public Uri getWebsiteUri() {
-        return websiteUri;
-    }
-
-    public void setWebsiteUri(Uri websiteUri) {
-        this.websiteUri = websiteUri;
-    }
 
     public String getPhoneNumber() {
         return phoneNumber;
@@ -109,15 +78,5 @@ public class PlaceWrapper implements Serializable {
         this.getPriceLevel = getPriceLevel;
     }
 
-    LatLng latLng;
 
-    LatLngBounds viewport;
-
-    Uri websiteUri;
-
-    String phoneNumber;
-
-    float getRating;
-
-    int getPriceLevel;
 }

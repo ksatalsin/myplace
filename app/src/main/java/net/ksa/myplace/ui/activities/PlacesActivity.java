@@ -9,6 +9,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.graphics.Palette;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -70,8 +71,9 @@ public class PlacesActivity extends AppCompatActivity
 
     @Bind(R.id.toolbar_actionbar)
     Toolbar mToolbar;
+
     private PlacesRecyclerAdapter mPlacesRecyclerAdapter;
-    private SavedData mSD;
+    private ArrayList<PlaceWrapper> arrItems;
 
 
     @Override
@@ -80,9 +82,9 @@ public class PlacesActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
-        //super rude and quick move
+        //super rude and quick move. Shoulde be ORM
         if (savedInstanceState != null)
-            mSD = (SavedData)savedInstanceState.getSerializable(ARG_KEY_SAVED_DATA);
+            arrItems = (ArrayList<PlaceWrapper>)savedInstanceState.getSerializable(ARG_KEY_SAVED_DATA);
 
         initializeGoogleApiClient();
         initializeLocationRequest();
@@ -116,9 +118,16 @@ public class PlacesActivity extends AppCompatActivity
     }
 
     @Override
-    public void onClick(PlaceWrapper pw) {
+    public void onClick(PlaceWrapper pw, Palette palette) {
 
+        Intent i = new Intent(this, PlacesDetailsActivity.class);
+        i.putExtra(PlacesDetailsActivity.ARG_KEY_PLACE_ID, pw.getId());
+        i.putExtra(PlacesDetailsActivity.ARG_KEY_PLACE_NAME, pw.getNameame());
+        if(palette!=null) {
+            i.putExtra(PlacesDetailsActivity.ARG_KEY_PRIMARY_COLOR, palette.getVibrantColor(getResources().getColor(R.color.primary)));
+        }
 
+        startActivity(i);
 
     }
 
@@ -140,11 +149,9 @@ public class PlacesActivity extends AppCompatActivity
 
         ArrayList<PlaceWrapper> data = mPlacesRecyclerAdapter.getData();
 
-        SavedData sd = new SavedData();
-        sd.setData(data);
-
-        if(mPlacesRecyclerAdapter.getData()!=null)
-            outState.putSerializable(ARG_KEY_SAVED_DATA, sd);
+        if(data!=null) {
+            outState.putSerializable(ARG_KEY_SAVED_DATA, data);
+        }
     }
 
     private void initCurrentLocation() {
@@ -172,7 +179,7 @@ public class PlacesActivity extends AppCompatActivity
         mPlacesRecycler.setVerticalFadingEdgeEnabled(true);
         mPlacesRecycler.setVerticalScrollBarEnabled(true);
 
-        mPlacesRecyclerAdapter = new PlacesRecyclerAdapter(mSD, mGoogleApiClient, mLastLocation, this);
+        mPlacesRecyclerAdapter = new PlacesRecyclerAdapter(arrItems, mGoogleApiClient, mLastLocation, this);
         mPlacesRecycler.setAdapter(mPlacesRecyclerAdapter);
     }
 
@@ -216,11 +223,12 @@ public class PlacesActivity extends AppCompatActivity
                     PlaceWrapper place = new PlaceWrapper();
                     place.setNameame(plh.getPlace().getName().toString());
                     place.setId(plh.getPlace().getId());
-                    place.setLatLng(plh.getPlace().getLatLng());
+                    place.setLat(plh.getPlace().getLatLng().latitude);
+                    place.setLng(plh.getPlace().getLatLng().longitude);
                     if(plh.getPlace().getAddress()!=null)
                         place.setAddress(plh.getPlace().getAddress().toString());
 
-                    mPlacesRecyclerAdapter.add(place);
+                    mPlacesRecyclerAdapter.add(0,place);
 
                     if(BuildConfig.DEBUG) {
                         String content = "";
@@ -232,7 +240,7 @@ public class PlacesActivity extends AppCompatActivity
                     }
                 }
 
-                mPlacesRecyclerAdapter.notifyDataSetChanged();
+               // mPlacesRecyclerAdapter.notifyDataSetChanged();
                 likelyPlaces.release();
             }
         });

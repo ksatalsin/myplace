@@ -1,7 +1,5 @@
 package net.ksa.myplace.ui.activities;
 
-import android.content.Intent;
-import android.content.IntentSender;
 import android.content.res.Configuration;
 import android.location.Location;
 import android.os.Bundle;
@@ -9,40 +7,31 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.graphics.Palette;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
-import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResult;
-import com.google.android.gms.location.LocationSettingsStatusCodes;
-import com.google.android.gms.location.places.PlaceLikelihood;
-import com.google.android.gms.location.places.PlaceLikelihoodBuffer;
+import com.google.android.gms.location.places.PlacePhotoMetadata;
+import com.google.android.gms.location.places.PlacePhotoMetadataBuffer;
+import com.google.android.gms.location.places.PlacePhotoMetadataResult;
+import com.google.android.gms.location.places.PlacePhotoResult;
 import com.google.android.gms.location.places.Places;
-import com.google.android.gms.location.places.PlacesStatusCodes;
-import com.google.android.gms.location.places.ui.PlacePicker;
 
-import net.ksa.myplace.BuildConfig;
 import net.ksa.myplace.R;
 import net.ksa.myplace.model.PlaceWrapper;
 import net.ksa.myplace.ui.adapter.PhotosRecyclerAdapter;
-import net.ksa.myplace.ui.adapter.PlacesRecyclerAdapter;
 import net.ksa.myplace.ui.listeners.RecyclerClickListener;
 
 import java.io.Serializable;
@@ -53,10 +42,13 @@ import butterknife.ButterKnife;
 
 public class PlacesDetailsActivity extends AppCompatActivity
         implements GoogleApiClient.OnConnectionFailedListener,
-        GoogleApiClient.ConnectionCallbacks, SearchView.OnQueryTextListener, RecyclerClickListener {
+        GoogleApiClient.ConnectionCallbacks, RecyclerClickListener {
 
     private static final int REQUEST_CHECK_SETTINGS = 679;
     private static final String ARG_KEY_SAVED_DATA = "saved_data";
+    public static final String ARG_KEY_PRIMARY_COLOR = "prmary_color";
+    public static final String ARG_KEY_PLACE_ID = "place_id";
+    public static final String ARG_KEY_PLACE_NAME = "place_name";
     private final String TAG = getClass().getSimpleName();
 
     private GoogleApiClient mGoogleApiClient;
@@ -72,6 +64,8 @@ public class PlacesDetailsActivity extends AppCompatActivity
     Toolbar mToolbar;
     private PhotosRecyclerAdapter mPhotoRecyclerAdapter;
     private SavedData mSD;
+    private String mPlaceId;
+    private String mName;
 
 
     @Override
@@ -80,30 +74,56 @@ public class PlacesDetailsActivity extends AppCompatActivity
         setContentView(R.layout.activity_details);
         ButterKnife.bind(this);
 
-        //super rude and quick move
-        if (savedInstanceState != null)
-            mSD = (SavedData)savedInstanceState.getSerializable(ARG_KEY_SAVED_DATA);
+        mName = getIntent().getStringExtra(ARG_KEY_PLACE_NAME);
+        mPlaceId = getIntent().getStringExtra(ARG_KEY_PLACE_NAME);
 
         initializeGoogleApiClient();
         initializeLocationRequest();
         initializeToolBar();
-
         initializeRecycler();
+        initializePhotos();
+    }
+
+    /**
+     * Load a bitmap from the photos API asynchronously
+     * by using buffers and result callbacks.
+     */
+    private void initializePhotos() {
+        Places.GeoDataApi.getPlacePhotos(mGoogleApiClient, mPlaceId)
+                    .setResultCallback(new ResultCallback<PlacePhotoMetadataResult>() {
+
+                        @Override
+                        public void onResult(PlacePhotoMetadataResult photos) {
+                            if (!photos.getStatus().isSuccess()) {
+                                return;
+                            }
+
+                            PlacePhotoMetadataBuffer photoMetadataBuffer = photos.getPhotoMetadata();
+                            if (photoMetadataBuffer.getCount() > 0) {
+                                PlacePhotoMetadata placePhotoMetadata = photoMetadataBuffer.get(0);
+
+                                mPhotoRecyclerAdapter.add(0, placePhotoMetadata);
+                                //Log.v(TAG, "Photo loaded");
+                            }
+                            photoMetadataBuffer.release();
+                        }
+                    });
+
     }
 
     @Override
-    public void onClick(PlaceWrapper pw) {
+    public void onClick(PlaceWrapper pw, Palette mPalette) {
 
     }
 
     public class SavedData implements Serializable{
-        private ArrayList<PlaceWrapper> data;
+        private ArrayList<PlacePhotoMetadata> data;
 
-        public ArrayList<PlaceWrapper> getData() {
+        public ArrayList<PlacePhotoMetadata> getData() {
             return data;
         }
 
-        public void setData(ArrayList<PlaceWrapper> data) {
+        public void setData(ArrayList<PlacePhotoMetadata> data) {
             this.data = data;
         }
     }
@@ -112,7 +132,7 @@ public class PlacesDetailsActivity extends AppCompatActivity
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        ArrayList<PlaceWrapper> data = mPhotoRecyclerAdapter.getData();
+        ArrayList<PlacePhotoMetadata> data = mPhotoRecyclerAdapter.getData();
 
         SavedData sd = new SavedData();
         sd.setData(data);
@@ -163,6 +183,8 @@ public class PlacesDetailsActivity extends AppCompatActivity
     private void initializeToolBar() {
         mToolbar = (Toolbar) findViewById(R.id.toolbar_actionbar);
         setSupportActionBar(mToolbar);
+
+        getSupportActionBar().setTitle(mName);
     }
 
 
@@ -197,8 +219,6 @@ public class PlacesDetailsActivity extends AppCompatActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.detail, menu);
-        SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.menu_map));
-        searchView.setOnQueryTextListener(this);
         return true;
     }
 
@@ -216,15 +236,5 @@ public class PlacesDetailsActivity extends AppCompatActivity
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
 
-    }
-
-    @Override
-    public boolean onQueryTextSubmit(String query) {
-        return false;
-    }
-
-    @Override
-    public boolean onQueryTextChange(String newText) {
-        return false;
     }
 }

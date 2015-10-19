@@ -69,6 +69,8 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
         @Bind(R.id.tv_distance)
         TextView mDistanceText;
 
+        Palette mPalette;
+
 
         ResultCallback<PlacePhotoResult> mDisplayPhotoResultCallback
                 = new ResultCallback<PlacePhotoResult>() {
@@ -85,6 +87,7 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
 
                         if (palette == null)
                             return;
+                        mPalette = palette;
 
                         Drawable iconDrawable;
                         int color;
@@ -110,8 +113,8 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
             }
         };
 
-        void showDistance(LatLng latLng) {
-            double distance = SphericalUtil.computeDistanceBetween(latLng, new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()));
+        void showDistance(double lat, double lng) {
+            double distance = SphericalUtil.computeDistanceBetween(new LatLng(lat,lng), new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()));
             mDistanceText.setText(formatNumber(distance));
         }
 
@@ -162,14 +165,16 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
 
 
         }
+
+
     }
 
     @Override
     public void onViewRecycled(ViewHolder holder) {
         super.onViewRecycled(holder);
         holder.mPhoto.setImageResource(android.R.drawable.ic_menu_gallery);
-        holder.mPlaceIcon.setImageDrawable(null);
-        holder.mPlaceIcon.setImageResource(R.drawable.ic_place);
+        //holder.mPlaceIcon.setImageDrawable(null);
+        //holder.mPlaceIcon.setImageResource(R.drawable.ic_place);
         holder.mDistanceText.setText("");
         holder.mAddressText.setText("");
     }
@@ -181,7 +186,7 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mListener.onClick(item);
+                mListener.onClick(item, holder.mPalette);
             }
         });
 
@@ -198,8 +203,8 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
 
         holder.placePhotosAsync(item.getId());
 
-        if (mLastLocation != null && item.getLatLng() != null)
-            holder.showDistance(item.getLatLng());
+        if (mLastLocation != null)
+            holder.showDistance(item.getLat(),item.getLng());
 
 
     }
@@ -228,11 +233,11 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
         return mPlaces.size();
     }
 
-    public PlacesRecyclerAdapter(PlacesActivity.SavedData sd, @NonNull GoogleApiClient googleApiClient, Location lastLocation, RecyclerClickListener listener) {
+    public PlacesRecyclerAdapter(ArrayList<PlaceWrapper> places, @NonNull GoogleApiClient googleApiClient, Location lastLocation, RecyclerClickListener listener) {
         mLastLocation = lastLocation;
         mListener = listener;
-        if (sd != null && sd.getData() != null)
-            mPlaces = sd.getData();
+        if(places!=null)
+            mPlaces = places;
         mGoogleApiClient = googleApiClient;
     }
 
