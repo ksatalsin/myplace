@@ -10,4 +10,11 @@
             app:actionViewClass="android.support.v7.widget.SearchView"
             android:icon="@android:drawable/ic_menu_search"
             app:showAsAction="always"/>
+
+    <item
+        android:id="@+id/menu_pick_place"
+        android:orderInCategory="2"
+        android:title="Choose place"
+        android:icon="@drawable/ic_pin"
+        app:showAsAction="always"/>
 </menu>

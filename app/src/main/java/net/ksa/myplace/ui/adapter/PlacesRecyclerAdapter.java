@@ -222,11 +222,9 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
 
     public void removeAll() {
         mPlaces.clear();
+        notifyDataSetChanged();
     }
 
-    public void add(PlaceWrapper place) {
-        mPlaces.add(place);
-    }
 
     @Override
     public int getItemCount() {

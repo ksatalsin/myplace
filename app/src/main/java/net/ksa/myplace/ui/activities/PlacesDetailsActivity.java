@@ -1,38 +1,34 @@
 package net.ksa.myplace.ui.activities;
 
+import android.content.Context;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
-import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.graphics.Palette;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.PlacePhotoMetadata;
 import com.google.android.gms.location.places.PlacePhotoMetadataBuffer;
-import com.google.android.gms.location.places.PlacePhotoMetadataResult;
-import com.google.android.gms.location.places.PlacePhotoResult;
 import com.google.android.gms.location.places.Places;
 
 import net.ksa.myplace.R;
-import net.ksa.myplace.model.PlaceWrapper;
 import net.ksa.myplace.ui.adapter.PhotosRecyclerAdapter;
-import net.ksa.myplace.ui.listeners.RecyclerClickListener;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -42,13 +38,15 @@ import butterknife.ButterKnife;
 
 public class PlacesDetailsActivity extends AppCompatActivity
         implements GoogleApiClient.OnConnectionFailedListener,
-        GoogleApiClient.ConnectionCallbacks, RecyclerClickListener {
+        GoogleApiClient.ConnectionCallbacks {
 
     private static final int REQUEST_CHECK_SETTINGS = 679;
     private static final String ARG_KEY_SAVED_DATA = "saved_data";
     public static final String ARG_KEY_PRIMARY_COLOR = "prmary_color";
     public static final String ARG_KEY_PLACE_ID = "place_id";
     public static final String ARG_KEY_PLACE_NAME = "place_name";
+    public static final String ARG_KEY_PLACE_LAT = "place_lat";
+    public static final String ARG_KEY_PLACE_LNG = "place_lng";
     private final String TAG = getClass().getSimpleName();
 
     private GoogleApiClient mGoogleApiClient;
@@ -62,10 +60,12 @@ public class PlacesDetailsActivity extends AppCompatActivity
 
     @Bind(R.id.toolbar_actionbar)
     Toolbar mToolbar;
+
     private PhotosRecyclerAdapter mPhotoRecyclerAdapter;
-    private SavedData mSD;
     private String mPlaceId;
     private String mName;
+    private double mLat;
+    private double mLng;
 
 
     @Override
@@ -75,6 +75,8 @@ public class PlacesDetailsActivity extends AppCompatActivity
         ButterKnife.bind(this);
 
         mName = getIntent().getStringExtra(ARG_KEY_PLACE_NAME);
+        mLat = getIntent().getDoubleExtra(ARG_KEY_PLACE_LAT,0);
+        mLng = getIntent().getDoubleExtra(ARG_KEY_PLACE_LNG,0);
         mPlaceId = getIntent().getStringExtra(ARG_KEY_PLACE_NAME);
 
         initializeGoogleApiClient();
@@ -89,44 +91,30 @@ public class PlacesDetailsActivity extends AppCompatActivity
      * by using buffers and result callbacks.
      */
     private void initializePhotos() {
+
         Places.GeoDataApi.getPlacePhotos(mGoogleApiClient, mPlaceId)
-                    .setResultCallback(new ResultCallback<PlacePhotoMetadataResult>() {
+                .setResultCallback(photos -> {
 
-                        @Override
-                        public void onResult(PlacePhotoMetadataResult photos) {
-                            if (!photos.getStatus().isSuccess()) {
-                                return;
-                            }
+                    Log.v(TAG, "$$Photo status " + photos.getStatus().toString());
 
-                            PlacePhotoMetadataBuffer photoMetadataBuffer = photos.getPhotoMetadata();
-                            if (photoMetadataBuffer.getCount() > 0) {
-                                PlacePhotoMetadata placePhotoMetadata = photoMetadataBuffer.get(0);
+                    if (!photos.getStatus().isSuccess()) {
+                        return;
+                    }
 
-                                mPhotoRecyclerAdapter.add(0, placePhotoMetadata);
-                                //Log.v(TAG, "Photo loaded");
-                            }
-                            photoMetadataBuffer.release();
-                        }
-                    });
+                    PlacePhotoMetadataBuffer photoMetadataBuffer = photos.getPhotoMetadata();
 
+                    if( photoMetadataBuffer.getCount()==0){
+                        showToast("Images not found");
+                    }
+                    for (PlacePhotoMetadata pmd : photoMetadataBuffer) {
+
+                        mPhotoRecyclerAdapter.add(0, pmd);
+                    }
+
+                    photoMetadataBuffer.release();
+                });
     }
 
-    @Override
-    public void onClick(PlaceWrapper pw, Palette mPalette) {
-
-    }
-
-    public class SavedData implements Serializable{
-        private ArrayList<PlacePhotoMetadata> data;
-
-        public ArrayList<PlacePhotoMetadata> getData() {
-            return data;
-        }
-
-        public void setData(ArrayList<PlacePhotoMetadata> data) {
-            this.data = data;
-        }
-    }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
@@ -134,19 +122,16 @@ public class PlacesDetailsActivity extends AppCompatActivity
 
         ArrayList<PlacePhotoMetadata> data = mPhotoRecyclerAdapter.getData();
 
-        SavedData sd = new SavedData();
-        sd.setData(data);
-
-        if(mPhotoRecyclerAdapter.getData()!=null)
-            outState.putSerializable(ARG_KEY_SAVED_DATA, sd);
+        if (data != null)
+            outState.putSerializable(ARG_KEY_SAVED_DATA, data);
     }
 
 
     private void initializeRecycler() {
         int orientation = this.getResources().getConfiguration().orientation;
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-            mPhotoRecycler.setLayoutManager(linearLayoutManager);
+            GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 2);
+            mPhotoRecycler.setLayoutManager(gridLayoutManager);
         } else {
             GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 3);
             mPhotoRecycler.setLayoutManager(gridLayoutManager);
@@ -156,7 +141,7 @@ public class PlacesDetailsActivity extends AppCompatActivity
         mPhotoRecycler.setVerticalFadingEdgeEnabled(true);
         mPhotoRecycler.setVerticalScrollBarEnabled(true);
 
-        mPhotoRecyclerAdapter = new PhotosRecyclerAdapter(mSD, mGoogleApiClient, mLastLocation);
+        mPhotoRecyclerAdapter = new PhotosRecyclerAdapter(null, mGoogleApiClient, mLastLocation);
         mPhotoRecycler.setAdapter(mPhotoRecyclerAdapter);
     }
 
@@ -184,7 +169,15 @@ public class PlacesDetailsActivity extends AppCompatActivity
         mToolbar = (Toolbar) findViewById(R.id.toolbar_actionbar);
         setSupportActionBar(mToolbar);
 
-        getSupportActionBar().setTitle(mName);
+        try {
+            getSupportActionBar().setTitle(mName);
+            getSupportActionBar().setHomeButtonEnabled(true);
+            // getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            // getSupportActionBar().setDisplayShowTitleEnabled(false);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
 
@@ -222,6 +215,24 @@ public class PlacesDetailsActivity extends AppCompatActivity
         return true;
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_map:
+                launchGoogleMaps(this,mLat,mLng,mName);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    public static void launchGoogleMaps(Context context, double latitude, double longitude, String label) {
+        String format = "geo:0,0?q=" + Double.toString(latitude) + "," + Double.toString(longitude) + "(" + label + ")";
+        Uri uri = Uri.parse(format);
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        context.startActivity(intent);
+    }
 
     @Override
     public void onConnected(Bundle bundle) {

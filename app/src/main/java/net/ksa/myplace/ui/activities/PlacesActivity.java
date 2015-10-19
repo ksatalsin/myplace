@@ -18,6 +18,7 @@ import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
@@ -33,6 +34,7 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
+import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.PlaceLikelihood;
 import com.google.android.gms.location.places.PlaceLikelihoodBuffer;
 import com.google.android.gms.location.places.Places;
@@ -45,7 +47,6 @@ import net.ksa.myplace.model.PlaceWrapper;
 import net.ksa.myplace.ui.adapter.PlacesRecyclerAdapter;
 import net.ksa.myplace.ui.listeners.RecyclerClickListener;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
 import butterknife.Bind;
@@ -65,7 +66,6 @@ public class PlacesActivity extends AppCompatActivity
     private Location mLastLocation;
     private LocationRequest mLocationRequest;
 
-
     @Bind(R.id.rv_places)
     RecyclerView mPlacesRecycler;
 
@@ -82,9 +82,9 @@ public class PlacesActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
-        //super rude and quick move. Shoulde be ORM
+        //super rude quick move. Shoulde be ORM
         if (savedInstanceState != null)
-            arrItems = (ArrayList<PlaceWrapper>)savedInstanceState.getSerializable(ARG_KEY_SAVED_DATA);
+            arrItems = (ArrayList<PlaceWrapper>) savedInstanceState.getSerializable(ARG_KEY_SAVED_DATA);
 
         initializeGoogleApiClient();
         initializeLocationRequest();
@@ -94,27 +94,6 @@ public class PlacesActivity extends AppCompatActivity
 
         //have no time fo this :(
         // initializeNavigationDrawer();
-
-        //test
-        //Places.GeoDataApi.getPlacePhotos(mGoogleApiClient, "комфорт таун");
-
-
-     /*   PlaceWrapper place = new PlaceWrapper();
-        place.setNameame("asdasdasd");
-        mPlacesRecyclerAdapter.add(place);
-        mPlacesRecyclerAdapter.add(place);
-        mPlacesRecyclerAdapter.add(place);
-        mPlacesRecyclerAdapter.add(place);
-        mPlacesRecyclerAdapter.add(place);
-        mPlacesRecyclerAdapter.add(place);
-        mPlacesRecyclerAdapter.add(place);
-        mPlacesRecyclerAdapter.add(place);
-        mPlacesRecyclerAdapter.add(place);
-        mPlacesRecyclerAdapter.add(place);
-
-        mPlacesRecyclerAdapter.notifyDataSetChanged();
-*/
-
     }
 
     @Override
@@ -123,45 +102,33 @@ public class PlacesActivity extends AppCompatActivity
         Intent i = new Intent(this, PlacesDetailsActivity.class);
         i.putExtra(PlacesDetailsActivity.ARG_KEY_PLACE_ID, pw.getId());
         i.putExtra(PlacesDetailsActivity.ARG_KEY_PLACE_NAME, pw.getNameame());
-        if(palette!=null) {
+        i.putExtra(PlacesDetailsActivity.ARG_KEY_PLACE_LAT, pw.getLat());
+        i.putExtra(PlacesDetailsActivity.ARG_KEY_PLACE_LNG, pw.getLng());
+
+        if (palette != null) {
             i.putExtra(PlacesDetailsActivity.ARG_KEY_PRIMARY_COLOR, palette.getVibrantColor(getResources().getColor(R.color.primary)));
         }
 
         startActivity(i);
-
     }
 
-    public class SavedData implements Serializable{
-        private ArrayList<PlaceWrapper> data;
-
-        public ArrayList<PlaceWrapper> getData() {
-            return data;
-        }
-
-        public void setData(ArrayList<PlaceWrapper> data) {
-            this.data = data;
-        }
-    }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
         ArrayList<PlaceWrapper> data = mPlacesRecyclerAdapter.getData();
-
-        if(data!=null) {
+        if (data != null) {
             outState.putSerializable(ARG_KEY_SAVED_DATA, data);
         }
     }
 
     private void initCurrentLocation() {
         mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        if(mLastLocation == null) {
+        if (mLastLocation == null) {
             checkSettings();
             return;
         }
-
-       // showToast("Latitude: " + mLastLocation.getLatitude() + "Longitude: "+ mLastLocation.getLongitude());
         initializeRecycler();
     }
 
@@ -194,55 +161,45 @@ public class PlacesActivity extends AppCompatActivity
 
     private void initializeFab() {
         mFab = (FloatingActionButton) findViewById(R.id.fab);
-        mFab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-                guessCurrentPlace();
-            }
-        });
+        mFab.setOnClickListener(view -> guessCurrentPlace());
     }
 
     void guessCurrentPlace() {
         PendingResult<PlaceLikelihoodBuffer> result = Places.PlaceDetectionApi.getCurrentPlace(mGoogleApiClient, null);
-        result.setResultCallback(new ResultCallback<PlaceLikelihoodBuffer>() {
-            @Override
-            public void onResult(PlaceLikelihoodBuffer likelyPlaces) {
+        result.setResultCallback(likelyPlaces -> {
 
-                Log.e(TAG, "guessCurrentPlace onResult: " + likelyPlaces.getStatus().getStatusCode());
+            Log.e(TAG, "guessCurrentPlace onResult: " + likelyPlaces.getStatus().getStatusCode());
 
-                if (likelyPlaces.getStatus().getStatusCode() != PlacesStatusCodes.SUCCESS) {
-                    checkSettings();
-                    return;
-                }
-
-                mPlacesRecyclerAdapter.removeAll();
-
-                for (PlaceLikelihood plh : likelyPlaces) {
-
-                    PlaceWrapper place = new PlaceWrapper();
-                    place.setNameame(plh.getPlace().getName().toString());
-                    place.setId(plh.getPlace().getId());
-                    place.setLat(plh.getPlace().getLatLng().latitude);
-                    place.setLng(plh.getPlace().getLatLng().longitude);
-                    if(plh.getPlace().getAddress()!=null)
-                        place.setAddress(plh.getPlace().getAddress().toString());
-
-                    mPlacesRecyclerAdapter.add(0,place);
-
-                    if(BuildConfig.DEBUG) {
-                        String content = "";
-                        if (plh != null && plh.getPlace() != null && !TextUtils.isEmpty(plh.getPlace().getName()))
-                            content = "place: " + plh.getPlace().getName() + "\n";
-                        if (plh != null)
-                            content += "%: " + (int) (plh.getLikelihood() * 100) + "%";
-                        Log.v(TAG, content);
-                    }
-                }
-
-               // mPlacesRecyclerAdapter.notifyDataSetChanged();
-                likelyPlaces.release();
+            if (likelyPlaces.getStatus().getStatusCode() != PlacesStatusCodes.SUCCESS) {
+                checkSettings();
+                return;
             }
+
+            mPlacesRecyclerAdapter.removeAll();
+
+            for (PlaceLikelihood plh : likelyPlaces) {
+
+                PlaceWrapper place = new PlaceWrapper();
+                place.setNameame(plh.getPlace().getName().toString());
+                place.setId(plh.getPlace().getId());
+                place.setLat(plh.getPlace().getLatLng().latitude);
+                place.setLng(plh.getPlace().getLatLng().longitude);
+                if (plh.getPlace().getAddress() != null)
+                    place.setAddress(plh.getPlace().getAddress().toString());
+
+                mPlacesRecyclerAdapter.add(0, place);
+
+                if (BuildConfig.DEBUG) {
+                    String content = "";
+                    if (plh != null && plh.getPlace() != null && !TextUtils.isEmpty(plh.getPlace().getName()))
+                        content = "place: " + plh.getPlace().getName() + "\n";
+                    if (plh != null)
+                        content += "%: " + (int) (plh.getLikelihood() * 100) + "%";
+                    Log.v(TAG, content);
+                }
+            }
+
+            likelyPlaces.release();
         });
     }
 
@@ -295,7 +252,6 @@ public class PlacesActivity extends AppCompatActivity
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
         SearchView searchView = (SearchView) MenuItemCompat.getActionView(menu.findItem(R.id.menu_search));
-        // searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
         searchView.setOnQueryTextListener(this);
         return true;
     }
@@ -354,15 +310,44 @@ public class PlacesActivity extends AppCompatActivity
         });
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_pick_place:
+                runPlacePicker();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == PLACE_PICKER_REQUEST && resultCode == RESULT_OK) {
 
-            //TODO: show from picker
+            try {
+                Place p = PlacePicker.getPlace(data, this);
+
+                PlaceWrapper place = new PlaceWrapper();
+                place.setNameame(p.getName().toString());
+                place.setId(p.getId());
+                place.setLat(p.getLatLng().latitude);
+                place.setLng(p.getLatLng().longitude);
+                if (p.getAddress() != null)
+                    place.setAddress(p.getAddress().toString());
+
+                mPlacesRecyclerAdapter.removeAll();
+                mPlacesRecyclerAdapter.add(0, place);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
 
         } else if (requestCode == REQUEST_CHECK_SETTINGS) {
             if (resultCode == RESULT_OK) {
 
-               initCurrentLocation();
+                initCurrentLocation();
 
             } else {
                 Toast.makeText(
@@ -373,7 +358,6 @@ public class PlacesActivity extends AppCompatActivity
             }
         }
     }
-
 
     @Override
     public void onConnected(Bundle bundle) {
@@ -392,8 +376,6 @@ public class PlacesActivity extends AppCompatActivity
 
     @Override
     public boolean onQueryTextSubmit(String query) {
-
-
 
         return false;
     }

@@ -3,6 +3,7 @@ package net.ksa.myplace.ui.adapter;
 import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
+import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,7 +16,6 @@ import com.google.android.gms.location.places.PlacePhotoMetadata;
 import com.google.android.gms.location.places.PlacePhotoResult;
 
 import net.ksa.myplace.R;
-import net.ksa.myplace.ui.activities.PlacesDetailsActivity;
 
 import java.util.ArrayList;
 
@@ -79,6 +79,13 @@ public class PhotosRecyclerAdapter extends RecyclerView.Adapter<PhotosRecyclerAd
                 holder.mPhoto.getHeight())
                 .setResultCallback(holder.mDisplayPhotoResultCallback);
 
+        CharSequence attribution = item.getAttributions();
+        if (attribution == null) {
+            holder.mNameText.setVisibility(View.GONE);
+        } else {
+            holder.mNameText.setVisibility(View.VISIBLE);
+            holder.mNameText.setText(Html.fromHtml(attribution.toString()));
+        }
     }
 
     public void add(int position, PlacePhotoMetadata item) {
@@ -105,9 +112,9 @@ public class PhotosRecyclerAdapter extends RecyclerView.Adapter<PhotosRecyclerAd
         return mPhotos.size();
     }
 
-    public PhotosRecyclerAdapter(PlacesDetailsActivity.SavedData sd, @NonNull GoogleApiClient googleApiClient, Location lastLocation) {
-        if (sd != null && sd.getData() != null)
-            mPhotos = sd.getData();
+    public PhotosRecyclerAdapter(ArrayList<PlacePhotoMetadata> photos, @NonNull GoogleApiClient googleApiClient, Location lastLocation) {
+        if (photos != null)
+            mPhotos = photos;
         mGoogleApiClient = googleApiClient;
     }
 
