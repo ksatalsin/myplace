@@ -172,7 +172,7 @@ public class PlacesActivity extends AppCompatActivity
         mPlacesRecycler.setVerticalFadingEdgeEnabled(true);
         mPlacesRecycler.setVerticalScrollBarEnabled(true);
 
-        mPlacesRecyclerAdapter = new PlacesRecyclerAdapter(mSD, mGoogleApiClient, mLastLocation);
+        mPlacesRecyclerAdapter = new PlacesRecyclerAdapter(mSD, mGoogleApiClient, mLastLocation, this);
         mPlacesRecycler.setAdapter(mPlacesRecyclerAdapter);
     }
 

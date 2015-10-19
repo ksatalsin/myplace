@@ -28,6 +28,7 @@ import com.google.maps.android.SphericalUtil;
 import net.ksa.myplace.R;
 import net.ksa.myplace.model.PlaceWrapper;
 import net.ksa.myplace.ui.activities.PlacesActivity;
+import net.ksa.myplace.ui.listeners.RecyclerClickListener;
 
 import java.util.ArrayList;
 
@@ -36,6 +37,7 @@ import butterknife.ButterKnife;
 
 public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAdapter.ViewHolder> {
     private final Location mLastLocation;
+    private RecyclerClickListener mListener;
     private ArrayList<PlaceWrapper> mPlaces = new ArrayList<>();
     private GoogleApiClient mGoogleApiClient;
 
@@ -157,6 +159,8 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
         public ViewHolder(View v) {
             super(v);
             ButterKnife.bind(this, v);
+
+
         }
     }
 
@@ -174,9 +178,17 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
     public void onBindViewHolder(ViewHolder holder, int position) {
         final PlaceWrapper item = mPlaces.get(position);
 
-      /*  //
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mListener.onClick(item);
+            }
+        });
+
+
+        //bad practice
         holder.mPlaceIcon.setImageDrawable(null);
-        holder.mPlaceIcon.setImageResource(R.drawable.ic_place);*/
+        holder.mPlaceIcon.setImageResource(R.drawable.ic_place);
 
         if (!TextUtils.isEmpty(item.getNameame()))
             holder.mNameText.setText(item.getNameame());
@@ -188,6 +200,8 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
 
         if (mLastLocation != null && item.getLatLng() != null)
             holder.showDistance(item.getLatLng());
+
+
     }
 
     public void add(int position, PlaceWrapper item) {
@@ -214,8 +228,9 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
         return mPlaces.size();
     }
 
-    public PlacesRecyclerAdapter(PlacesActivity.SavedData sd, @NonNull GoogleApiClient googleApiClient, Location lastLocation) {
+    public PlacesRecyclerAdapter(PlacesActivity.SavedData sd, @NonNull GoogleApiClient googleApiClient, Location lastLocation, RecyclerClickListener listener) {
         mLastLocation = lastLocation;
+        mListener = listener;
         if (sd != null && sd.getData() != null)
             mPlaces = sd.getData();
         mGoogleApiClient = googleApiClient;
