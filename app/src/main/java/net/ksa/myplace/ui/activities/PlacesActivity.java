@@ -5,6 +5,7 @@ import android.content.IntentSender;
 import android.content.res.Configuration;
 import android.location.Location;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.view.MenuItemCompat;
@@ -34,12 +35,17 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
+import com.google.android.gms.location.places.AutocompletePrediction;
+import com.google.android.gms.location.places.AutocompletePredictionBuffer;
 import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.PlaceBuffer;
 import com.google.android.gms.location.places.PlaceLikelihood;
 import com.google.android.gms.location.places.PlaceLikelihoodBuffer;
 import com.google.android.gms.location.places.Places;
 import com.google.android.gms.location.places.PlacesStatusCodes;
 import com.google.android.gms.location.places.ui.PlacePicker;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 
 import net.ksa.myplace.BuildConfig;
 import net.ksa.myplace.R;
@@ -74,6 +80,42 @@ public class PlacesActivity extends AppCompatActivity
 
     private PlacesRecyclerAdapter mPlacesRecyclerAdapter;
     private ArrayList<PlaceWrapper> arrItems;
+
+    //Ukraine
+    //SW 48.105618, 22.479196
+    //NE 52.745141, 38.183349
+
+    private LatLngBounds bounds = new LatLngBounds(new LatLng(48.105618, 22.479196), new LatLng(52.745141, 38.183349));
+    private com.google.android.gms.common.api.ResultCallback<? super com.google.android.gms.location.places.PlaceBuffer> mPlaceDetailsCallback = new ResultCallback<PlaceBuffer>() {
+        @Override
+        public void onResult(PlaceBuffer places) {
+
+            Log.e(TAG, "Search PlaceBuffer onResult: " + places.getStatus().getStatusCode());
+
+            if (places.getStatus().getStatusCode() != PlacesStatusCodes.SUCCESS) {
+                checkSettings();
+                return;
+            }
+
+            if (places.getCount() > 0) {
+                mPlacesRecyclerAdapter.removeAll();
+
+                for (int i = 0; i < places.getCount(); i++) {
+                    Place p = places.get(i);
+                    PlaceWrapper place = new PlaceWrapper();
+                    place.setNameame(p.getName().toString());
+                    place.setId(p.getId());
+                    place.setLat(p.getLatLng().latitude);
+                    place.setLng(p.getLatLng().longitude);
+                    if (p.getAddress() != null)
+                        place.setAddress(p.getAddress().toString());
+                    mPlacesRecyclerAdapter.add(0, place);
+                }
+            }
+
+            places.release();
+        }
+    };
 
 
     @Override
@@ -166,7 +208,13 @@ public class PlacesActivity extends AppCompatActivity
 
     void guessCurrentPlace() {
         PendingResult<PlaceLikelihoodBuffer> result = Places.PlaceDetectionApi.getCurrentPlace(mGoogleApiClient, null);
-        result.setResultCallback(likelyPlaces -> {
+
+        result.setResultCallback(getPlaceLikelihoodBufferResultCallback());
+    }
+
+    @NonNull
+    private ResultCallback<PlaceLikelihoodBuffer> getPlaceLikelihoodBufferResultCallback() {
+        return likelyPlaces -> {
 
             Log.e(TAG, "guessCurrentPlace onResult: " + likelyPlaces.getStatus().getStatusCode());
 
@@ -200,7 +248,7 @@ public class PlacesActivity extends AppCompatActivity
             }
 
             likelyPlaces.release();
-        });
+        };
     }
 
     private void showSnackBarr(View v, String s) {
@@ -376,6 +424,31 @@ public class PlacesActivity extends AppCompatActivity
 
     @Override
     public boolean onQueryTextSubmit(String query) {
+        Places.GeoDataApi.getAutocompletePredictions(mGoogleApiClient, query, bounds, null).setResultCallback(new ResultCallback<AutocompletePredictionBuffer>() {
+            @Override
+            public void onResult(AutocompletePredictionBuffer autocompletePredictions) {
+
+                Log.e(TAG, "guessCurrentPlace onResult: " + autocompletePredictions.getStatus().getStatusCode());
+
+                if (autocompletePredictions.getStatus().getStatusCode() != PlacesStatusCodes.SUCCESS) {
+                    checkSettings();
+                    return;
+                }
+
+                if (autocompletePredictions.getCount() > 0) {
+                    AutocompletePrediction ap = autocompletePredictions.get(0);
+
+
+                    PendingResult<PlaceBuffer> placeResult = Places.GeoDataApi
+                            .getPlaceById(mGoogleApiClient, ap.getPlaceId());
+                    placeResult.setResultCallback(mPlaceDetailsCallback);
+
+                }
+
+
+                autocompletePredictions.release();
+            }
+        });
 
         return false;
     }
